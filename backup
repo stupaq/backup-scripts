@@ -6,122 +6,122 @@ ProfileDir="${HOME}/.backup-profiles"
 
 # if something goes wrong
 function failwith {
-	echo ":: $1"
-	sync
-	if [[ -d "$TempDir" ]]; then
-		sleep 2
-		umount "$TempDir" &> /dev/null
-		rmdir "$TempDir" &> /dev/null
-	fi
-	exit 1
+  echo ":: $1"
+  sync
+  if [[ -d "$TempDir" ]]; then
+    sleep 2
+    umount "$TempDir" &> /dev/null
+    rmdir "$TempDir" &> /dev/null
+  fi
+  exit 1
 }
 
 # if not
 function status {
-	echo ":: $1"
+  echo ":: $1"
 }
 
 # check arguments / show help
 if [[ "$#" -lt 1 || "$1" == "help" ]]; then
-	echo "$(basename $0) - simple backup framework"
-	echo "usage: $(basename $0) [profile]; where [profile] is the name of backup profile"
-	echo "current directory for profile files is $ProfileDir"
-	exit 0
+  echo "$(basename $0) - simple backup framework"
+  echo "usage: $(basename $0) [profile]; where [profile] is the name of backup profile"
+  echo "current directory for profile files is $ProfileDir"
+  exit 0
 fi
 
 for ARG in "$@"
 do
 
-	status "Loading backup profile: $ARG"
+  status "Loading backup profile: $ARG"
 
-	# clean variables
-	unset Mode
-	unset Source
-	unset Destination
-	unset Exclude
-	unset Preserve
-	unset Options
-	unset PreTriggers
-	unset PostTriggers
+  # clean variables
+  unset Mode
+  unset Source
+  unset Destination
+  unset Exclude
+  unset Preserve
+  unset Options
+  unset PreTriggers
+  unset PostTriggers
 
-	# source backup profile
-	ProfileName=$(basename "$ARG")
-	Profile="$ProfileDir/$ProfileName"
-	if [[ -x "$Profile" ]]; then
-		source "$Profile"
-	else
-		failwith "Requested profile $Profile is not marked as executable, ignoring.."
-	fi
+  # source backup profile
+  ProfileName=$(basename "$ARG")
+  Profile="$ProfileDir/$ProfileName"
+  if [[ -x "$Profile" ]]; then
+    source "$Profile"
+  else
+    failwith "Requested profile $Profile is not marked as executable, ignoring.."
+  fi
 
-	# trigger pre actions
-	status "Running pre triggers.."
+  # trigger pre actions
+  status "Running pre triggers.."
 
-	if [[ -n "$PreTriggers" ]]; then
-		bash -c "$PreTriggers" || failwith "PreTriggers failed.."
-	fi
+  if [[ -n "$PreTriggers" ]]; then
+    bash -c "$PreTriggers" || failwith "PreTriggers failed.."
+  fi
 
-	# mount destination
-	unset TempDir
-	if [[ "$Mode" == "loop" ]]; then
-		TempDir=$(mktemp -d)/
-		mount -t auto -o loop,rw "$Destination" "$TempDir" || failwith "Can not mount loop file.."
-		Destination=$TempDir
-	fi
+  # mount destination
+  unset TempDir
+  if [[ "$Mode" == "loop" ]]; then
+    TempDir=$(mktemp -d)/
+    mount -t auto -o loop,rw "$Destination" "$TempDir" || failwith "Can not mount loop file.."
+    Destination=$TempDir
+  fi
 
-	status "Preparing backup command.."
+  status "Preparing backup command.."
 
-	# prepare backup command
-	unset Cmnd
-	case "$Mode" in
-		'ssh')
-			Cmnd+="rsync -ae ssh $Source $Destination "
-			[[ "${Preserve:-1}" -eq 0 ]] && Cmnd+="--no-o --no-p --no-g "
-			[[ -n "$Exclude" ]] && Cmnd+="--exclude-from=$Exclude "
-			;;
-		'tar')
-			Cmnd+="tar -acf $Destination $Source "
-			[[ "${Preserve:-0}" -eq 1 ]] && Cmnd+="-p "
-			[[ -n "$Exclude" ]] && Cmnd+="--exclude-from=$Exclude "
-			;;
-		'none')
-			Cmnd+=":"
-			;;
-		'dup')
-			Cmnd+="duplicity $Source $Destination "
-			[[ -n "$Exclude" ]] && Cmnd+="--exclude-globbing-filelist $Exclude "
-			;;
-		*)
-			Cmnd+="rsync -a $Source $Destination "
-			[[ "${Preserve:-1}" -eq 0 ]] && Cmnd+="--no-o --no-p --no-g "
-			[[ -n "$Exclude" ]] && Cmnd+="--exclude-from=$Exclude "
-			;;
-	esac
+  # prepare backup command
+  unset Cmnd
+  case "$Mode" in
+    'ssh')
+      Cmnd+="rsync -ae ssh $Source $Destination "
+      [[ "${Preserve:-1}" -eq 0 ]] && Cmnd+="--no-o --no-p --no-g "
+      [[ -n "$Exclude" ]] && Cmnd+="--exclude-from=$Exclude "
+      ;;
+    'tar')
+      Cmnd+="tar -acf $Destination $Source "
+      [[ "${Preserve:-0}" -eq 1 ]] && Cmnd+="-p "
+      [[ -n "$Exclude" ]] && Cmnd+="--exclude-from=$Exclude "
+      ;;
+    'none')
+      Cmnd+=":"
+      ;;
+    'dup')
+      Cmnd+="duplicity $Source $Destination "
+      [[ -n "$Exclude" ]] && Cmnd+="--exclude-globbing-filelist $Exclude "
+      ;;
+    *)
+      Cmnd+="rsync -a $Source $Destination "
+      [[ "${Preserve:-1}" -eq 0 ]] && Cmnd+="--no-o --no-p --no-g "
+      [[ -n "$Exclude" ]] && Cmnd+="--exclude-from=$Exclude "
+      ;;
+  esac
 
-	status "Performing backup.."
+  status "Performing backup.."
 
-	# perform backup
-	$Cmnd $Options || failwith "Something goes wrong.. Aborting.."
+  # perform backup
+  $Cmnd $Options || failwith "Something goes wrong.. Aborting.."
 
-	# trigger post actions and umount destination
-	status "Running post triggers.."
+  # trigger post actions and umount destination
+  status "Running post triggers.."
 
-	if [[ -n "$PostTriggers" ]]; then
-		bash -c "$PostTriggers"
-	fi
+  if [[ -n "$PostTriggers" ]]; then
+    bash -c "$PostTriggers"
+  fi
 
-	if [[ -d "$TempDir" ]]; then
-		status "Unmounting loop file.."
-		sync
-		sleep 2
-		umount "$TempDir" || failwith "Can not umount loop file.."
-		rmdir "$TempDir"
-	fi
+  if [[ -d "$TempDir" ]]; then
+    status "Unmounting loop file.."
+    sync
+    sleep 2
+    umount "$TempDir" || failwith "Can not umount loop file.."
+    rmdir "$TempDir"
+  fi
 
-	# report
-	status "Backup performed without known errors.."
-	status "One need to sync sometimes.."
+  # report
+  status "Backup performed without known errors.."
+  status "One need to sync sometimes.."
 
-	echo
+  echo
 
 done
 
