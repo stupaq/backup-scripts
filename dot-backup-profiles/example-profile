@@ -25,6 +25,11 @@ Preserve=
 Options=
 
 # passed AS IS to bash with option -c
+# it in your own interests to put here all prerequisites or mount drives
+# if this fails backup won't go further
+PreTriggers=
+
+# passed AS IS to bash with option -c
 # it in your own interests to sync after backup or unmount drives
 PostTriggers=
 
