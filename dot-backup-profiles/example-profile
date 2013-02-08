@@ -1,0 +1,30 @@
+# mode can be one of following: tar/loop/ssh/fs
+# everything except tar uses rsync to copy files
+Mode=
+
+# source is passed AS IS to rsync/tar command (see rsync/tar manual)
+Source=
+
+# destination is also passed AS IS
+Destination=
+
+# path to file with exclude rules (empty means no such rules)
+# it is in your own interests to exclude backup destination
+Exclude=
+
+# preserve == 1 saves also file attributes
+# if You want to mangle permissions and ownership in special way,
+# then Options is right place for that
+# default for tar is 0
+# default for other is 1
+Preserve=
+
+# aditional options string passed AS IS to rsync/tar
+# default tar flags: -a
+# default rsync flags: -a
+Options=
+
+# passed AS IS to bash with option -c
+# it in your own interests to sync after backup or unmount drives
+PostTriggers=
+
