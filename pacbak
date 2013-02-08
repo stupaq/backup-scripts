@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Checking if ur root
+if [ "$(id -u)" != "0" ]; then
+  echo "This script must be run as root!"
+  exit 1
+fi
+
+# Default backup list location
+DEFAULT_PATH="/root/backup/pacman-lst-bak.gz"
+
+if [[ "$#" -eq 0 ]]; then
+  set 'save'
+fi
+
+case "$1" in
+  save)
+    echo ":: Default backup file location: $DEFAULT_PATH"
+    echo ":: Sending the backup command to pacman.."
+    pacman -Qe | gzip - > "$DEFAULT_PATH"
+    echo ":: Done!"
+    ;;
+
+  restore)
+    if [ "$#" -ne 2 ]; then
+      echo "You must specify backup file!"
+      exit 1
+    fi
+    echo ":: Sending the update command to pacman.."
+    pacman -Syy
+    echo ":: Now restore backed up list.."
+    sleep 1
+    pacman -S $(zcat "$2")
+    echo ":: Done!"
+    ;;
+
+  info)
+    echo "Simple script to backup and restore your pacman list of installed programs."
+    ;;
+
+  *)
+    echo "usage: $0 {save|restore|info}"
+esac
+exit 0
